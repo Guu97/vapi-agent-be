@@ -1,0 +1,111 @@
+# ============================================================
+# Maven
+# ============================================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.properties
+
+# ============================================================
+# Java
+# ============================================================
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ============================================================
+# Spring Boot
+# ============================================================
+# Local override files (never commit these)
+application-local.yml
+application-local.properties
+application-dev.yml
+application-dev.properties
+application.yml
+
+# ============================================================
+# Secrets / credentials (NEVER commit these)
+# ============================================================
+*.env
+.env
+.env.*
+secrets.yml
+secrets.properties
+# If you ever export your OpenAI key or DB password to a file
+**/secret*
+**/credential*
+
+# ============================================================
+# IDE – IntelliJ IDEA
+# ============================================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ============================================================
+# IDE – VS Code
+# ============================================================
+.vscode/
+!.vscode/extensions.json
+
+# ============================================================
+# IDE – Eclipse / STS
+# ============================================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+# ============================================================
+# IDE – NetBeans
+# ============================================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ============================================================
+# OS
+# ============================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+log/
+
+# ============================================================
+# Test output
+# ============================================================
+**/surefire-reports/
+**/failsafe-reports/
