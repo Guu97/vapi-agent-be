@@ -165,11 +165,11 @@ GET /admin/rag/retrieve?query=orari+anagrafe&topK=5
 
 | Metodo | Path | Descrizione |
 |---|---|---|
-| `POST` | `/appointments` | Prenota un appuntamento |
-| `POST` | `/appointments/{id}/cancel` | Cancella per ID |
-| `GET` | `/appointments/{id}` | Recupera per ID |
-| `GET` | `/appointments?email=` | Lista per email cittadino |
-| `GET` | `/appointments/all` | Lista tutti gli appuntamenti attivi (ordinati per data creazione DESC) |
+| `POST` | `/api/appointments` | Prenota un appuntamento |
+| `POST` | `/api/appointments/{id}/cancel` | Cancella per ID |
+| `GET` | `/api/appointments/{id}` | Recupera per ID |
+| `GET` | `/api/appointments?email=` | Lista per email cittadino |
+| `GET` | `/api/appointments/all` | Lista tutti gli appuntamenti attivi (ordinati per data creazione DESC) |
 
 ### Log conversazioni — `/api/call-logs`
 

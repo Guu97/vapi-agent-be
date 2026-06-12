@@ -23,7 +23,7 @@ import java.util.UUID;
  *   GET  /appointments?email=...  – list appointments by citizen email
  */
 @RestController
-@RequestMapping("/appointments")
+@RequestMapping("/api/appointments")
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
