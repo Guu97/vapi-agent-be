@@ -1,12 +1,33 @@
 # vapi-agent-be
 
-Backend Spring Boot per il **voicebot municipale del Comune di Impruneta** — integrato con [Vapi.ai](https://vapi.ai).
+Monorepo per il **voicebot municipale del Comune di Impruneta** — integrato con [Vapi.ai](https://vapi.ai).
 
-Il servizio espone:
-- **Webhook Vapi** (5 tool) che il modello vocale invoca in tempo reale durante la chiamata
-- **Pipeline RAG** per indicizzare le pagine del sito comunale e rispondere con dati aggiornati
-- **CRUD appuntamenti** (prenotazione, cancellazione, ricerca)
-- **Log conversazioni** — persistenza del report end-of-call di Vapi e recupero per la dashboard frontend
+Il sistema è composto da:
+- **Backend** Spring Boot — API REST, webhook Vapi, pipeline RAG, log conversazioni
+- **Frontend** — Dashboard statica (HTML/JS vanilla) per visualizzare appuntamenti e log chiamate
+- **Nginx** — Reverse proxy che serve il frontend e ruota le chiamate `/api/` verso il backend
+
+---
+
+## Struttura del repository
+
+```
+/
+├── backend/                    # Spring Boot application
+│   ├── src/
+│   ├── pom.xml
+│   └── Dockerfile
+├── frontend/                   # Dashboard statica (HTML/JS vanilla)
+│   ├── index.html
+│   ├── app.js
+│   ├── runtime-config.js       # Configurazione runtime (BASE_URL, ecc.)
+│   └── Dockerfile
+├── nginx/
+│   └── nginx.conf              # Reverse proxy config
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
 
 ---
 
@@ -24,10 +45,10 @@ Il servizio espone:
 
 ---
 
-## Struttura del progetto
+## Struttura del backend
 
 ```
-src/main/java/com/impruneta/vapiagent/
+backend/src/main/java/com/impruneta/vapiagent/
 │
 ├── VapiAgentBeApplication.java        # Entry point (@SpringBootApplication)
 │
@@ -110,12 +131,12 @@ src/main/java/com/impruneta/vapiagent/
 
 ---
 
-## Avvio locale
+## Avvio locale (backend standalone)
 
 ```bash
 # 1. Clona il repository
 git clone <repo-url>
-cd vapi-agent-be
+cd vapi-agent-be/backend
 
 # 2. Esporta le variabili d'ambiente
 export DB_USERNAME=...
@@ -123,10 +144,25 @@ export DB_PASSWORD=...
 export OPENAI_API_KEY=...
 
 # 3. Compila e avvia
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 Il server parte sulla porta `8080` di default.
+
+---
+
+## Avvio con Docker Compose
+
+```bash
+# 1. Copia il file di esempio e compila le variabili
+cp .env.example .env
+# Modifica .env con le tue credenziali reali
+
+# 2. Avvia tutti i servizi
+docker compose up --build
+```
+
+L'applicazione sarà disponibile su `http://localhost` (porta 80, tramite Nginx).
 
 ---
 
@@ -216,7 +252,7 @@ Per ogni tool, crea una nuova voce in **Vapi → Tools → New Tool** con il seg
 }
 ```
 
-Gli schemi completi con descrizioni in italiano sono documentati come commenti Javadoc in [src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java](src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java).
+Gli schemi completi con descrizioni in italiano sono documentati come commenti Javadoc in [backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java](backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java).
 
 ---
 
