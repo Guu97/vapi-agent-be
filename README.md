@@ -1,29 +1,29 @@
 # vapi-agent-be
 
-Monorepo per il **voicebot municipale del Comune di Impruneta** — integrato con [Vapi.ai](https://vapi.ai).
+Monorepo for the **municipal voicebot for the Municipality of Impruneta**, integrated with [Vapi.ai](https://vapi.ai).
 
-Il sistema è composto da:
-- **Backend** Spring Boot — API REST, webhook Vapi, pipeline RAG, log conversazioni
-- **Frontend** — Dashboard statica (HTML/JS vanilla) per visualizzare appuntamenti e log chiamate
-- **Nginx** — Reverse proxy che serve il frontend e ruota le chiamate `/api/` verso il backend
+The system is composed of:
+- **Spring Boot backend** — REST APIs, Vapi webhooks, RAG pipeline, conversation logs
+- **Frontend** — Static dashboard (vanilla HTML/JS) to view appointments and call logs
+- **Nginx** — Reverse proxy that serves the frontend and routes `/api/` calls to the backend
 
 ---
 
-## Struttura del repository
+## Repository structure
 
-```
+```text
 /
-├── backend/                    # Spring Boot application
+├── backend/                     # Spring Boot application
 │   ├── src/
 │   ├── pom.xml
 │   └── Dockerfile
-├── frontend/                   # Dashboard statica (HTML/JS vanilla)
+├── frontend/                    # Static dashboard (vanilla HTML/JS)
 │   ├── index.html
 │   ├── app.js
-│   ├── runtime-config.js       # Configurazione runtime (BASE_URL, ecc.)
+│   ├── runtime-config.js        # Runtime configuration (BASE_URL, etc.)
 │   └── Dockerfile
 ├── nginx/
-│   └── nginx.conf              # Reverse proxy config
+│   └── nginx.conf               # Reverse proxy config
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -31,211 +31,285 @@ Il sistema è composto da:
 
 ---
 
-## Stack tecnico
+## Technical stack
 
-| Componente | Versione / Dettaglio |
+| Component | Version / Detail |
 |---|---|
 | Java | 21 |
 | Spring Boot | 3.3.5 |
-| PostgreSQL | Supabase (pooler PgBouncer, porta 6543) |
-| pgvector | `extensions.vector(768)` — indice HNSW, distanza coseno |
-| OpenAI Embeddings | `text-embedding-3-small`, 768 dimensioni |
-| Scraping HTML | Jsoup 1.17.2 |
+| PostgreSQL | Supabase (PgBouncer pooler, port 6543) |
+| pgvector | `extensions.vector(768)` — HNSW index, cosine distance |
+| OpenAI Embeddings | `text-embedding-3-small`, 768 dimensions |
+| HTML scraping | Jsoup 1.17.2 |
 | Build | Maven 3 |
 
 ---
 
-## Struttura del backend
+## Setup Instructions
 
+These instructions let you run the project locally, verify the main services, and connect the tools to Vapi.
+
+### Prerequisites
+
+Make sure you have the following installed:
+
+- Java 21
+- Maven 3
+- Docker Desktop with Docker Compose
+- A PostgreSQL/Supabase database already set up
+- A valid `OPENAI_API_KEY` for the embeddings pipeline
+- A Vapi account
+- Optional but recommended: ngrok or an equivalent tunnel to expose the backend to Vapi
+
+---
+
+### 1. Clone the repository
+
+```bash
+git clone <repo-url>
+cd vapi-agent-be
 ```
+
+---
+
+### 2. Configure environment variables
+
+Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set at least these variables:
+
+```env
+DB_USERNAME=...
+DB_PASSWORD=...
+OPENAI_API_KEY=...
+```
+
+If you use Supabase with the PgBouncer pooler, also verify that the JDBC URL configured in the backend points to the correct pooler port, typically `6543`.
+
+---
+
+### 3. Start with Docker Compose
+
+Start the full stack:
+
+```bash
+docker compose up --build
+```
+
+Exposed services:
+
+- Frontend + reverse proxy: [http://localhost](http://localhost)
+- Backend API behind nginx: [http://localhost/api](http://localhost/api)
+
+To check container status:
+
+```bash
+docker compose ps
+```
+
+To follow logs:
+
+```bash
+docker compose logs -f
+```
+
+---
+
+## Backend structure
+
+```text
 backend/src/main/java/com/impruneta/vapiagent/
 │
-├── VapiAgentBeApplication.java        # Entry point (@SpringBootApplication)
+├── VapiAgentBeApplication.java         # Entry point (@SpringBootApplication)
 │
 ├── common/
-│   ├── ChecksumUtil.java              # SHA-256 per deduplicazione contenuti
-│   └── JobResult.java                 # Record di risultato pipeline (processed/skipped/failed)
+│   ├── ChecksumUtil.java               # SHA-256 for content deduplication
+│   └── JobResult.java                  # Pipeline result record (processed/skipped/failed)
 │
-├── servicetype/                       # Tipi di servizio comunali
-│   ├── ServiceType.java               # Entità JPA (code, name, description, active)
+├── servicetype/                        # Municipal service types
+│   ├── ServiceType.java                # JPA entity (code, name, description, active)
 │   ├── ServiceTypeRepository.java
-│   └── ServiceTypeSeeder.java         # Seed iniziale idempotente (@PostConstruct)
+│   └── ServiceTypeSeeder.java          # Idempotent initial seed (@PostConstruct)
 │
-├── appointment/                       # Gestione appuntamenti
-│   ├── Appointment.java               # Entità JPA con soft-delete
-│   ├── AppointmentStatus.java         # Enum BOOKED | CANCELLED
+├── appointment/                        # Appointment management
+│   ├── Appointment.java                # JPA entity with soft-delete
+│   ├── AppointmentStatus.java          # Enum BOOKED | CANCELLED
 │   ├── AppointmentRepository.java
-│   ├── AppointmentBookingRequest.java # DTO di prenotazione con validazione Bean
+│   ├── AppointmentBookingRequest.java  # Booking DTO with Bean Validation
 │   ├── AppointmentService.java
-│   └── AppointmentController.java     # REST /appointments
+│   └── AppointmentController.java      # REST /appointments
 │
-├── municipaldocument/                 # Documenti comunali scraped
-│   ├── MunicipalDocument.java         # Entità: url, title, rawHtml, rawText, checksum
+├── municipaldocument/                  # Scraped municipal documents
+│   ├── MunicipalDocument.java          # Entity: url, title, rawHtml, rawText, checksum
 │   ├── MunicipalDocumentRepository.java
-│   ├── MunicipalDocumentChunk.java    # Chunk testuale (senza embedding mappato)
+│   ├── MunicipalDocumentChunk.java     # Text chunk (embedding not directly mapped)
 │   └── MunicipalDocumentChunkRepository.java
 │
 ├── rag/
-│   ├── ingestion/                     # Fase 1: scraping
-│   │   ├── SeedUrl.java               # Record (url, serviceType, enabled)
-│   │   ├── SeedRegistry.java          # Lista hardcoded di 10 URL del sito comunale
-│   │   ├── HtmlFetcher.java           # Download pagina con Jsoup
-│   │   ├── HtmlExtractor.java         # Estrazione testo con fallback su 8 selettori CSS
-│   │   └── IngestionService.java      # Orchestrazione + checksum dedup
+│   ├── ingestion/                      # Phase 1: scraping
+│   │   ├── SeedUrl.java                # Record (url, serviceType, enabled)
+│   │   ├── SeedRegistry.java           # Hardcoded list of 10 municipal website URLs
+│   │   ├── HtmlFetcher.java            # Page download with Jsoup
+│   │   ├── HtmlExtractor.java          # Text extraction with fallback across 8 CSS selectors
+│   │   └── IngestionService.java       # Orchestration + checksum dedup
 │   │
-│   ├── chunking/                      # Fase 2: suddivisione in chunk
-│   │   ├── ChunkingProperties.java    # @ConfigurationProperties app.rag.chunking.*
-│   │   ├── ChunkingTransactionHelper.java  # REQUIRES_NEW per atomicità per-documento
+│   ├── chunking/                       # Phase 2: chunk splitting
+│   │   ├── ChunkingProperties.java     # @ConfigurationProperties app.rag.chunking.*
+│   │   ├── ChunkingTransactionHelper.java  # REQUIRES_NEW for per-document atomicity
 │   │   └── ChunkingService.java
 │   │
-│   ├── embedding/                     # Fase 3: vettorizzazione
-│   │   ├── EmbeddingService.java      # Interfaccia float[] embed(String)
-│   │   ├── OpenAiEmbeddingService.java # Chiamata REST a /v1/embeddings
+│   ├── embedding/                      # Phase 3: vectorization
+│   │   ├── EmbeddingService.java       # Interface float[] embed(String)
+│   │   ├── OpenAiEmbeddingService.java # REST call to /v1/embeddings
 │   │   ├── EmbeddingVectorRepository.java # JdbcTemplate UPDATE embedding = ?::vector
-│   │   └── EmbeddingOrchestrationService.java # Loop chunk-by-chunk, try/catch per chunk
+│   │   └── EmbeddingOrchestrationService.java # Chunk-by-chunk loop, try/catch per chunk
 │   │
-│   └── retrieval/                     # Fase 4: ricerca semantica
-│       ├── RetrievalResult.java       # Record risultato (content, score, sourceUrl…)
-│       └── RetrievalService.java      # Cosine similarity via JdbcTemplate + <=> operator
+│   └── retrieval/                      # Phase 4: semantic retrieval
+│       ├── RetrievalResult.java        # Result record (content, score, sourceUrl…)
+│       └── RetrievalService.java       # Cosine similarity via JdbcTemplate + <=> operator
 │
-├── calllog/                           # Log conversazioni Vapi
-│   ├── CallLog.java                   # Entità JPA (tabella call_log)
+├── calllog/                            # Vapi conversation logs
+│   ├── CallLog.java                    # JPA entity (call_log table)
 │   ├── CallLogRepository.java
-│   ├── CallLogService.java            # Persistenza report + recupero log recenti
-│   ├── CallLogController.java         # GET /api/call-logs
-│   ├── VapiWebhookController.java     # POST /api/vapi/webhook/call-ended
+│   ├── CallLogService.java             # Report persistence + recent log retrieval
+│   ├── CallLogController.java          # GET /api/call-logs
+│   ├── VapiWebhookController.java      # POST /api/vapi/webhook/call-ended
 │   └── dto/
-│       ├── VapiEndOfCallReportRequest.java  # DTO payload webhook Vapi
-│       └── CallLogResponse.java             # DTO risposta frontend
+│       ├── VapiEndOfCallReportRequest.java  # Vapi webhook payload DTO
+│       └── CallLogResponse.java             # Frontend response DTO
 │
 └── vapi/
     ├── dto/
-    │   ├── VapiToolCallRequest.java   # DTO inbound Vapi (arguments come JsonNode)
-    │   └── VapiToolCallResponse.java  # DTO risposta Vapi
-    ├── VapiToolsAdapterService.java   # Parsing argomenti + deleghe ai servizi interni
-    ├── VapiToolsController.java       # 5 endpoint POST per i tool Vapi
-    └── AdminRagController.java        # Endpoint admin per eseguire la pipeline RAG
+    │   ├── VapiToolCallRequest.java    # Vapi inbound DTO (arguments as JsonNode)
+    │   └── VapiToolCallResponse.java   # Vapi response DTO
+    ├── VapiToolsAdapterService.java    # Argument parsing + delegation to internal services
+    ├── VapiToolsController.java        # 5 POST endpoints for Vapi tools
+    └── AdminRagController.java         # Admin endpoints to run the RAG pipeline
 ```
 
 ---
 
-## Variabili d'ambiente
+## Environment variables
 
-| Variabile | Descrizione | Esempio |
+| Variable | Description | Example |
 |---|---|---|
-| `DB_USERNAME` | Utente PostgreSQL / Supabase | `postgres.xxxxx` |
-| `DB_PASSWORD` | Password database | — |
-| `OPENAI_API_KEY` | Chiave API OpenAI (embedding) | `sk-proj-...` |
+| `DB_USERNAME` | PostgreSQL / Supabase username | `postgres.xxxxx` |
+| `DB_PASSWORD` | Database password | — |
+| `OPENAI_API_KEY` | OpenAI API key for embeddings | `sk-proj-...` |
 
-> **Non committare mai credenziali reali.** Il file `application.yml` contiene valori di fallback solo per sviluppo locale; rimuoverli prima del deploy.
+> **Never commit real credentials.** The `application.yml` file may contain fallback values for local development only; remove them before deployment.
 
 ---
 
-## Avvio locale (backend standalone)
+## Local startup (standalone backend)
 
 ```bash
-# 1. Clona il repository
+# 1. Clone the repository
 git clone <repo-url>
 cd vapi-agent-be/backend
 
-# 2. Esporta le variabili d'ambiente
+# 2. Export environment variables
 export DB_USERNAME=...
 export DB_PASSWORD=...
 export OPENAI_API_KEY=...
 
-# 3. Compila e avvia
+# 3. Build and start
 mvn spring-boot:run
 ```
 
-Il server parte sulla porta `8080` di default.
+The server starts on port `8080` by default.
 
 ---
 
-## Avvio con Docker Compose
+## Startup with Docker Compose
 
 ```bash
-# 1. Copia il file di esempio e compila le variabili
+# 1. Copy the example file and fill in the variables
 cp .env.example .env
-# Modifica .env con le tue credenziali reali
+# Edit .env with your real credentials
 
-# 2. Avvia tutti i servizi
+# 2. Start all services
 docker compose up --build
 ```
 
-L'applicazione sarà disponibile su `http://localhost` (porta 80, tramite Nginx).
+The application will be available at [http://localhost](http://localhost) (port 80, via Nginx).
 
 ---
 
-## Pipeline RAG
+## RAG pipeline
 
-Esegui i passi nell'ordine indicato. Tutti gli endpoint sono sincroni e bloccanti.
+Run the steps in the indicated order. All endpoints are synchronous and blocking.
 
 ```bash
-# 1. Scraping delle pagine del sito comunale
+# 1. Scrape municipal website pages
 POST /admin/rag/ingest
 
-# 2. Suddivisione dei documenti in chunk (target ~800 caratteri)
+# 2. Split documents into chunks (target ~800 characters)
 POST /admin/rag/chunk
 
-# 3. Generazione embedding con OpenAI (richiede OPENAI_API_KEY valida)
+# 3. Generate embeddings with OpenAI (requires a valid OPENAI_API_KEY)
 POST /admin/rag/embed
 
-# 4. Test ricerca semantica
+# 4. Test semantic retrieval
 GET /admin/rag/retrieve?query=orari+anagrafe&topK=5
 ```
 
-### URL indicizzati (`SeedRegistry`)
+### Indexed URLs (`SeedRegistry`)
 
-| URL | Servizio |
+| URL | Service |
 |---|---|
-| Homepage + servizi + orari + segnalazioni | URP |
-| Anagrafe (pagina servizio + prenotazioni) | ANAGRAFE |
-| Tributi + TARI | TRIBUTI |
-| Servizi sociali | SERVIZI_SOCIALI |
+| Homepage + services + office hours + reports | URP |
+| Registry office (service page + bookings) | ANAGRAFE |
+| Taxes + TARI | TRIBUTI |
+| Social services | SERVIZI_SOCIALI |
 
 ---
 
-## Endpoint REST
+## REST endpoints
 
-### Appuntamenti — `/appointments`
+### Appointments — `/appointments`
 
-| Metodo | Path | Descrizione |
+| Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/appointments` | Prenota un appuntamento |
-| `POST` | `/api/appointments/{id}/cancel` | Cancella per ID |
-| `GET` | `/api/appointments/{id}` | Recupera per ID |
-| `GET` | `/api/appointments?email=` | Lista per email cittadino |
-| `GET` | `/api/appointments/all` | Lista tutti gli appuntamenti attivi (ordinati per data creazione DESC) |
+| `POST` | `/api/appointments` | Book an appointment |
+| `POST` | `/api/appointments/{id}/cancel` | Cancel by ID |
+| `GET` | `/api/appointments/{id}` | Retrieve by ID |
+| `GET` | `/api/appointments?email=` | List by citizen email |
+| `GET` | `/api/appointments/all` | List all active appointments (ordered by creation date DESC) |
 
-### Log conversazioni — `/api/call-logs`
+### Conversation logs — `/api/call-logs`
 
-| Metodo | Path | Descrizione |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/call-logs?limit=20` | Recupera i log recenti (default 20, max 200) |
+| `GET` | `/api/call-logs?limit=20` | Retrieve recent logs (default 20, max 200) |
 
-### Vapi Webhook — `/api/vapi/webhook`
+### Vapi webhook — `/api/vapi/webhook`
 
-| Metodo | Path | Descrizione |
+| Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/vapi/webhook/call-ended` | Riceve l'end-of-call-report da Vapi e persiste il log |
+| `POST` | `/api/vapi/webhook/call-ended` | Receives the Vapi end-of-call report and persists the log |
 
-### Tool Vapi — `/api/vapi/tools`
+### Vapi tools — `/api/vapi/tools`
 
-Questi endpoint ricevono i webhook di Vapi durante la chiamata vocale.
+These endpoints receive Vapi webhooks during the live voice call.
 
-| Metodo | Path | Tool Vapi |
+| Method | Path | Vapi tool |
 |---|---|---|
-| `POST` | `/api/vapi/tools/retrieve-municipal-info` | Ricerca semantica nel knowledge base |
-| `POST` | `/api/vapi/tools/book-appointment` | Prenotazione appuntamento |
-| `POST` | `/api/vapi/tools/check-appointment-availability` | Verifica disponibilità slot |
-| `POST` | `/api/vapi/tools/get-appointments-by-name` | Ricerca appuntamenti per nome |
-| `POST` | `/api/vapi/tools/cancel-appointment` | Cancellazione per slot (email + data + servizio) |
+| `POST` | `/api/vapi/tools/retrieve-municipal-info` | Semantic search in the knowledge base |
+| `POST` | `/api/vapi/tools/book-appointment` | Appointment booking |
+| `POST` | `/api/vapi/tools/check-appointment-availability` | Slot availability check |
+| `POST` | `/api/vapi/tools/get-appointments-by-name` | Appointment lookup by name |
+| `POST` | `/api/vapi/tools/cancel-appointment` | Slot cancellation (email + date + service) |
 
 ---
 
-## Configurazione Vapi Dashboard
+## Vapi Dashboard configuration
 
-Per ogni tool, crea una nuova voce in **Vapi → Tools → New Tool** con il seguente schema base:
+For each tool, create a new entry in **Vapi → Tools → New Tool** with the following base schema:
 
 ```json
 {
@@ -252,23 +326,23 @@ Per ogni tool, crea una nuova voce in **Vapi → Tools → New Tool** con il seg
 }
 ```
 
-Gli schemi completi con descrizioni in italiano sono documentati come commenti Javadoc in [backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java](backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java).
+The full schemas with Italian descriptions are documented as Javadoc comments in [backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java](backend/src/main/java/com/impruneta/vapiagent/vapi/VapiToolsAdapterService.java).
 
 ---
 
-## Schema database
+## Database schema
 
-Lo schema PostgreSQL è **gestito esternamente** (`ddl-auto=none`). Le tabelle attese sono:
+The PostgreSQL schema is **managed externally** (`ddl-auto=none`). The expected tables are:
 
-| Tabella | Descrizione |
+| Table | Description |
 |---|---|
-| `service_type` | Tipi di servizio comunale (seed: ANAGRAFE, TRIBUTI, URP, SERVIZI_SOCIALI) |
-| `appointment` | Appuntamenti con soft-delete e status BOOKED/CANCELLED |
-| `municipal_document` | Documenti scraped (url unico, checksum, rawText) |
-| `municipal_document_chunk` | Chunk testuali con colonna `embedding extensions.vector(768)` |
-| `call_log` | Report end-of-call ricevuti da Vapi (transcript, summary, durata, timestamp) |
+| `service_type` | Municipal service types (seed: ANAGRAFE, TRIBUTI, URP, SERVIZI_SOCIALI) |
+| `appointment` | Appointments with soft-delete and BOOKED/CANCELLED status |
+| `municipal_document` | Scraped documents (unique URL, checksum, rawText) |
+| `municipal_document_chunk` | Text chunks with `embedding extensions.vector(768)` column |
+| `call_log` | End-of-call reports received from Vapi (transcript, summary, duration, timestamp) |
 
-La colonna `embedding` usa un indice HNSW con distanza coseno:
+The `embedding` column uses an HNSW index with cosine distance:
 
 ```sql
 CREATE INDEX ON municipal_document_chunk
@@ -277,9 +351,9 @@ CREATE INDEX ON municipal_document_chunk
 
 ---
 
-## Note tecniche
+## Technical notes
 
-- **PgBouncer / Supabase pooler**: il parametro `prepareThreshold=0` nella JDBC URL disabilita i prepared statement lato server, obbligatori in modalità _transaction mode_.
-- **pgvector senza Hibernate**: tutte le operazioni sul vettore usano `JdbcTemplate` direttamente (`?::vector` cast) per evitare incompatibilità di tipo con l'ORM.
-- **Timezone**: il JVM deve girare in UTC per evitare offset sull'ora degli appuntamenti (colonna `time` PostgreSQL senza timezone). Aggiungere `-Duser.timezone=UTC` agli argomenti JVM in produzione oppure applicare `TimeZone.setDefault(UTC)` nel `@PostConstruct` dell'application class.
-- **Formato argomenti Vapi**: in produzione Vapi codifica `arguments` come stringa JSON (`"{\"key\":\"val\"}"`), in modalità test come oggetto JSON diretto. L'`VapiToolsAdapterService` gestisce entrambi i formati.
+- **PgBouncer / Supabase pooler**: the `prepareThreshold=0` parameter in the JDBC URL disables server-side prepared statements, which are required in transaction mode.
+- **pgvector without Hibernate**: all vector operations use `JdbcTemplate` directly (`?::vector` cast) to avoid ORM type compatibility issues.
+- **Timezone**: the JVM should run in UTC to avoid shifts on appointment times (`time` column in PostgreSQL without timezone). Add `-Duser.timezone=UTC` to JVM arguments in production or apply `TimeZone.setDefault(UTC)` in a `@PostConstruct` method in the application class.
+- **Vapi arguments format**: in production, Vapi encodes `arguments` as a JSON string (`"{\"key\":\"val\"}"`); in test mode, it sends a direct JSON object. `VapiToolsAdapterService` handles both formats.
