@@ -205,40 +205,6 @@ backend/src/main/java/com/impruneta/vapiagent/
 
 ---
 
-## Local startup (standalone backend)
-
-```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd vapi-agent-be/backend
-
-# 2. Export environment variables
-export DB_USERNAME=...
-export DB_PASSWORD=...
-export OPENAI_API_KEY=...
-
-# 3. Build and start
-mvn spring-boot:run
-```
-
-The server starts on port `8080` by default.
-
----
-
-## Startup with Docker Compose
-
-```bash
-# 1. Copy the example file and fill in the variables
-cp .env.example .env
-# Edit .env with your real credentials
-
-# 2. Start all services
-docker compose up --build
-```
-
-The application will be available at [http://localhost](http://localhost) (port 80, via Nginx).
-
----
 
 ## RAG pipeline
 
