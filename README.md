@@ -6,6 +6,7 @@ Il servizio espone:
 - **Webhook Vapi** (5 tool) che il modello vocale invoca in tempo reale durante la chiamata
 - **Pipeline RAG** per indicizzare le pagine del sito comunale e rispondere con dati aggiornati
 - **CRUD appuntamenti** (prenotazione, cancellazione, ricerca)
+- **Log conversazioni** — persistenza del report end-of-call di Vapi e recupero per la dashboard frontend
 
 ---
 
@@ -75,6 +76,16 @@ src/main/java/com/impruneta/vapiagent/
 │   └── retrieval/                     # Fase 4: ricerca semantica
 │       ├── RetrievalResult.java       # Record risultato (content, score, sourceUrl…)
 │       └── RetrievalService.java      # Cosine similarity via JdbcTemplate + <=> operator
+│
+├── calllog/                           # Log conversazioni Vapi
+│   ├── CallLog.java                   # Entità JPA (tabella call_log)
+│   ├── CallLogRepository.java
+│   ├── CallLogService.java            # Persistenza report + recupero log recenti
+│   ├── CallLogController.java         # GET /api/call-logs
+│   ├── VapiWebhookController.java     # POST /api/vapi/webhook/call-ended
+│   └── dto/
+│       ├── VapiEndOfCallReportRequest.java  # DTO payload webhook Vapi
+│       └── CallLogResponse.java             # DTO risposta frontend
 │
 └── vapi/
     ├── dto/
@@ -158,6 +169,19 @@ GET /admin/rag/retrieve?query=orari+anagrafe&topK=5
 | `POST` | `/appointments/{id}/cancel` | Cancella per ID |
 | `GET` | `/appointments/{id}` | Recupera per ID |
 | `GET` | `/appointments?email=` | Lista per email cittadino |
+| `GET` | `/appointments/all` | Lista tutti gli appuntamenti attivi (ordinati per data creazione DESC) |
+
+### Log conversazioni — `/api/call-logs`
+
+| Metodo | Path | Descrizione |
+|---|---|---|
+| `GET` | `/api/call-logs?limit=20` | Recupera i log recenti (default 20, max 200) |
+
+### Vapi Webhook — `/api/vapi/webhook`
+
+| Metodo | Path | Descrizione |
+|---|---|---|
+| `POST` | `/api/vapi/webhook/call-ended` | Riceve l'end-of-call-report da Vapi e persiste il log |
 
 ### Tool Vapi — `/api/vapi/tools`
 
@@ -206,6 +230,7 @@ Lo schema PostgreSQL è **gestito esternamente** (`ddl-auto=none`). Le tabelle a
 | `appointment` | Appuntamenti con soft-delete e status BOOKED/CANCELLED |
 | `municipal_document` | Documenti scraped (url unico, checksum, rawText) |
 | `municipal_document_chunk` | Chunk testuali con colonna `embedding extensions.vector(768)` |
+| `call_log` | Report end-of-call ricevuti da Vapi (transcript, summary, durata, timestamp) |
 
 La colonna `embedding` usa un indice HNSW con distanza coseno:
 
