@@ -53,4 +53,9 @@ public class AppointmentController {
     public ResponseEntity<List<Appointment>> getByEmail(@RequestParam String email) {
         return ResponseEntity.ok(appointmentService.findByEmail(email));
     }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<Appointment>> getAll() {
+        return ResponseEntity.ok(appointmentService.findAll());
+    }
 }

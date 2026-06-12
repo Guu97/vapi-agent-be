@@ -39,4 +39,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
         LocalDate appointmentDate,
         String serviceTypeCode
     );
+
+    List<Appointment> findAllByDeletedFalseOrderByCreatedAtDesc();
 }

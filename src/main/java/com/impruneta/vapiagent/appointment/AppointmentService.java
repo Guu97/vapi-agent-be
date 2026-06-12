@@ -114,6 +114,14 @@ public class AppointmentService {
     }
 
     /**
+     * Returns all active (non-deleted) appointments ordered by creation date descending.
+     */
+    @Transactional(readOnly = true)
+    public List<Appointment> findAll() {
+        return appointmentRepository.findAllByDeletedFalseOrderByCreatedAtDesc();
+    }
+
+    /**
      * Returns true if the slot is free (no BOOKED appointment for that service + date + time).
      * Rule: one appointment per slot per service type.
      */
